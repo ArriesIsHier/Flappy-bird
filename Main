@@ -1,0 +1,138 @@
+import pygame
+import sys
+import random
+
+# Game settings
+SCREEN_WIDTH, SCREEN_HEIGHT = 480, 640
+FPS = 60
+EASY_SPEED = 2
+MEDIUM_SPEED = 4
+HARD_SPEED = 6
+EASY_GAP = 250
+MEDIUM_GAP = 200
+HARD_GAP = 150
+
+# Colors
+WHITE = (255, 255, 255)
+GREEN = (0, 255, 0)
+BLACK = (0, 0, 0)
+
+# Bird settings
+BIRD_RADIUS = 10
+BIRD_GRAVITY = 0.5
+bird_velocity = 0
+bird_rect = pygame.Rect(SCREEN_WIDTH // 2, random.randint(50, SCREEN_HEIGHT - 50), BIRD_RADIUS * 2, BIRD_RADIUS * 2)
+bird_lives = 3
+
+# Pipe settings
+PIPE_WIDTH = 80
+PIPE_HEIGHT = random.randint(100, 400)
+PIPE_GAP = EASY_GAP  # This will change with difficulty
+pipe_speed = EASY_SPEED  # This will change with difficulty
+pipe_rect = pygame.Rect(SCREEN_WIDTH, 0, PIPE_WIDTH, PIPE_HEIGHT)
+pipe_rect_lower = pygame.Rect(SCREEN_WIDTH, PIPE_HEIGHT + PIPE_GAP, PIPE_WIDTH, SCREEN_HEIGHT)
+
+# Ground settings
+GROUND_HEIGHT = 50
+
+pygame.init()
+clock = pygame.time.Clock()
+screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+
+font = pygame.font.Font(None, 36)
+score = 0
+high_score = 0
+game_started = False
+difficulty = "easy"  # This will change based on user input
+
+def draw_scene():
+    for i in range(SCREEN_HEIGHT):
+        pygame.draw.line(screen, (0, 0, min(255, i // 2)), (0, i), (SCREEN_WIDTH, i))  # Draw gradient background
+    pygame.draw.rect(screen, BLACK, (0, SCREEN_HEIGHT - GROUND_HEIGHT, SCREEN_WIDTH, GROUND_HEIGHT))  # Draw ground
+    pygame.draw.circle(screen, GREEN, bird_rect.center, BIRD_RADIUS)
+    pygame.draw.rect(screen, GREEN, pipe_rect)
+    pygame.draw.rect(screen, GREEN, pipe_rect_lower)
+    score_text = font.render(f'Score: {score}', True, WHITE)
+    lives_text = font.render(f'Lives: {bird_lives}', True, WHITE)
+    screen.blit(score_text, (20, 20))
+    screen.blit(lives_text, (SCREEN_WIDTH - 100, 20))
+
+def start_screen():
+    global game_started, high_score, difficulty, pipe_speed, PIPE_GAP
+    while not game_started:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    game_started = True
+                elif event.key == pygame.K_1:
+                    difficulty = "easy"
+                    pipe_speed = EASY_SPEED
+                    PIPE_GAP = EASY_GAP
+                elif event.key == pygame.K_2:
+                    difficulty = "medium"
+                    pipe_speed = MEDIUM_SPEED
+                    PIPE_GAP = MEDIUM_GAP
+                elif event.key == pygame.K_3:
+                    difficulty = "hard"
+                    pipe_speed = HARD_SPEED
+                    PIPE_GAP = HARD_GAP
+
+        screen.fill(WHITE)
+        start_text = font.render('Press SPACE to start', True, BLACK)
+        diff_text = font.render('Press 1 for EASY, 2 for MEDIUM, 3 for HARD', True, BLACK)
+        high_score_text = font.render(f'High Score: {high_score}', True, BLACK)
+        screen.blit(start_text, (SCREEN_WIDTH // 2 - start_text.get_width() // 2, SCREEN_HEIGHT // 2 - start_text.get_height() // 2))
+        screen.blit(diff_text, (SCREEN_WIDTH // 2 - diff_text.get_width() // 2, SCREEN_HEIGHT // 2 - diff_text.get_height() // 2 + 50))
+        screen.blit(high_score_text, (SCREEN_WIDTH // 2 - high_score_text.get_width() // 2, SCREEN_HEIGHT // 2 - high_score_text.get_height() // 2 - 50))
+        pygame.display.update()
+
+start_screen()
+
+while True:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            pygame.quit()
+            sys.exit()
+
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_SPACE]:
+        bird_velocity = -10
+
+    bird_velocity += BIRD_GRAVITY
+    bird_rect.y += int(bird_velocity)
+
+    pipe_rect.x -= pipe_speed
+    pipe_rect_lower.x -= pipe_speed
+
+    if pipe_rect.x < -PIPE_WIDTH:
+        pipe_rect.x = SCREEN_WIDTH
+        pipe_rect_lower.x = SCREEN_WIDTH
+        PIPE_HEIGHT = random.randint(100, 400)
+        pipe_rect.height = PIPE_HEIGHT
+        pipe_rect_lower.y = PIPE_HEIGHT + PIPE_GAP
+        pipe_rect_lower.height = SCREEN_HEIGHT - pipe_rect_lower.y
+        score += 1
+        if score > high_score:
+            high_score = score
+
+    draw_scene()
+
+    if bird_rect.colliderect(pipe_rect) or bird_rect.colliderect(pipe_rect_lower):
+        bird_lives -= 1
+        if bird_lives == 0:
+            game_over_text = font.render('Game Over', True, WHITE)
+            screen.blit(game_over_text, (SCREEN_WIDTH // 2 - game_over_text.get_width() // 2, SCREEN_HEIGHT // 2 - game_over_text.get_height() // 2))
+            pygame.display.update()
+            pygame.time.wait(3000)
+            pygame.quit()
+            sys.exit()
+        else:
+            bird_rect.x, bird_rect.y = SCREEN_WIDTH // 2, random.randint(50, SCREEN_HEIGHT - 50 - GROUND_HEIGHT)
+            bird_velocity = 0
+            pygame.time.wait(1000)
+
+    pygame.display.update()
+    clock.tick(FPS)
